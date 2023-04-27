@@ -1,0 +1,22 @@
+{
+  "rust-analyzer.linkedProjects": [
+    "./Cargo.toml",
+    "./Cargo.toml",
+    "./Cargo.toml",
+    "./Cargo.toml",
+    "./Cargo.toml",
+    "./Cargo.toml",
+    "./Cargo.toml"
+  ],
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "localhost",
+      "database": "pos",
+      "username": "brandonmanzo"
+    }
+  ]
+}
