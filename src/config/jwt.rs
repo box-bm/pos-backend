@@ -1,3 +1,4 @@
+use actix_web::HttpRequest;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{
     decode, encode, errors::Error as JwtError, DecodingKey, EncodingKey, Header, TokenData,
@@ -46,4 +47,22 @@ pub fn decode_token(token: String) -> Result<TokenData<Claims>, JwtError> {
         &DecodingKey::from_secret(secret.as_ref()),
         &Validation::default(),
     )
+}
+
+pub fn read_token_from_http(req: &HttpRequest) -> Result<Claims, String> {
+    let auth_header = req.headers().get(actix_web::http::header::AUTHORIZATION);
+    if auth_header.is_none() {
+        return Err("No authentication token sent".to_string());
+    }
+
+    let auth_token = auth_header.unwrap().to_str().unwrap_or("").to_string();
+
+    if auth_token.is_empty() {
+        return Err("Authentication token has foreign chars!".to_string());
+    }
+
+    match decode_token(auth_token) {
+        Ok(token) => Ok(token.claims),
+        Err(_e) => Err("Invalid authentication token sent!".to_string()),
+    }
 }

@@ -3,11 +3,11 @@ use std::future::{ready, Ready};
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     error::ErrorUnauthorized,
-    http, Error as ActixWebError,
+    Error as ActixWebError,
 };
 use futures_util::future::LocalBoxFuture;
 
-use crate::config::jwt::decode_token;
+use crate::config::jwt::read_token_from_http;
 
 pub struct Authentication;
 
@@ -19,19 +19,19 @@ where
     type Response = ServiceResponse<B>;
     type Error = ActixWebError;
     type InitError = ();
-    type Transform = AuthenticationTokenMiddleware<S>;
+    type Transform = AuthenticationMiddleware<S>;
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(AuthenticationTokenMiddleware { service }))
+        ready(Ok(AuthenticationMiddleware { service }))
     }
 }
 
-pub struct AuthenticationTokenMiddleware<S> {
+pub struct AuthenticationMiddleware<S> {
     service: S,
 }
 
-impl<S, B> Service<ServiceRequest> for AuthenticationTokenMiddleware<S>
+impl<S, B> Service<ServiceRequest> for AuthenticationMiddleware<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = ActixWebError>,
     S::Future: 'static,
@@ -43,28 +43,15 @@ where
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let auth_header = req.headers().get(http::header::AUTHORIZATION);
-
-        if auth_header.is_none() {
-            return Box::pin(async move { Err(ErrorUnauthorized("No authentication token sent")) });
-        }
-
-        let auth_token = auth_header.unwrap().to_str().unwrap_or("").to_string();
-
-        if auth_token.is_empty() {
-            return Box::pin(async move { Err(ErrorUnauthorized("Token is empty")) });
-        }
+        let token = read_token_from_http(&req.request().clone());
 
         let fut = self.service.call(req);
 
-        let decode = decode_token(auth_token);
-
         Box::pin(async move {
             let res = fut.await?;
-
-            match decode {
-                Ok(_token) => Ok(res),
-                Err(_) => Err(ErrorUnauthorized("Invalid auth token")),
+            match token {
+                Ok(_claims) => Ok(res),
+                Err(err) => Err(ErrorUnauthorized(err)),
             }
         })
     }

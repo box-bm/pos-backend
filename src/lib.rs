@@ -17,5 +17,9 @@ pub mod config {
 }
 
 pub mod middleware {
+    pub mod authentication;
+}
+
+pub mod extractor {
     pub mod authentication_token;
 }
