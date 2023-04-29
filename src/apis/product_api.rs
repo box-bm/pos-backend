@@ -1,8 +1,5 @@
 use crate::config::db_connection::DbPool;
-use crate::middleware;
 use crate::models::product::{NewProductHandler, Product};
-use actix_service::ServiceFactory;
-use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::{get, post, web, HttpResponse, Responder};
 
 #[get("")]
@@ -36,18 +33,9 @@ async fn create_product(
     }
 }
 
-pub fn product_service() -> actix_web::Scope<
-    impl ServiceFactory<
-        ServiceRequest,
-        Config = (),
-        Response = ServiceResponse,
-        Error = actix_web::Error,
-        InitError = (),
-    >,
-> {
+pub fn product_service() -> actix_web::Scope {
     web::scope("/products")
         .service(get_product)
         .service(get_products)
         .service(create_product)
-        .wrap(middleware::authentication_token::Authentication)
 }
