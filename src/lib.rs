@@ -23,3 +23,7 @@ pub mod middleware {
 pub mod extractor {
     pub mod authentication_token;
 }
+
+pub mod utils {
+    pub mod passwords;
+}
