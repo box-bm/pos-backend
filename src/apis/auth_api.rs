@@ -10,7 +10,7 @@ use crate::{
         db_connection::DbPool,
         jwt::{create_token, Subject},
     },
-    models::user::{RegisterUserHandler, User},
+    models::user::{LoginUserSchema, RegisterUserHandler, User},
 };
 
 #[derive(Serialize, Deserialize)]
@@ -20,16 +20,28 @@ struct TokenResponse {
 }
 
 #[post("/login")]
-async fn login() -> HttpResponse {
-    let token = create_token(Subject {
-        id: 1,
-        name: "Brandon".to_string(),
-    });
+async fn login(
+    pool: web::Data<DbPool>,
+    user_credentials: web::Json<LoginUserSchema>,
+) -> HttpResponse {
+    let mut conn = pool.get().unwrap();
 
-    HttpResponse::Ok().json(TokenResponse {
-        token,
-        message: String::from("Success"),
-    })
+    match web::block(move || User::login(&mut conn, &user_credentials)).await {
+        Ok(user_data) => match user_data {
+            Ok(user_data) => {
+                let token = create_token(Subject {
+                    id: user_data.id.to_string(),
+                    name: user_data.name,
+                });
+                HttpResponse::Ok().json(TokenResponse {
+                    token,
+                    message: String::from("Success"),
+                })
+            }
+            Err(err) => HttpResponse::BadRequest().body(err),
+        },
+        Err(err) => HttpResponse::BadRequest().body(err.to_string()),
+    }
 }
 
 #[post("/register")]

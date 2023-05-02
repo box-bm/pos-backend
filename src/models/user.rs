@@ -5,7 +5,8 @@ use crate::{
 };
 use chrono::NaiveDateTime;
 use diesel::{
-    ExpressionMethods, Insertable, PgConnection, QueryDsl, QueryResult, Queryable, RunQueryDsl,
+    associations::HasTable, ExpressionMethods, Insertable, PgConnection, QueryDsl, QueryResult,
+    Queryable, RunQueryDsl,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -51,15 +52,15 @@ impl User {
     ) -> Result<User, String> {
         use self::users::dsl::*;
 
-        let user_data = users
-            .filter(email.eq(&user_credentials.email))
-            .get_result::<User>(conn);
-
-        if user_data.is_ok() {
-            verify_password(&user_credentials.password, &user_data.unwrap().password);
+        match users::table().get_result::<User>(conn) {
+            Ok(user_data) => {
+                match verify_password(&user_credentials.password, &user_data.password) {
+                    Ok(_) => Ok(user_data),
+                    Err(err) => Err(err.to_string()),
+                }
+            }
+            Err(err) => Err(err.to_string()),
         }
-
-        Err("".to_string())
     }
 
     pub fn find_email_exist<'a>(

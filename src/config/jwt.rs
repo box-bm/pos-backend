@@ -18,7 +18,7 @@ pub struct Claims {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Subject {
-    pub id: usize,
+    pub id: String,
     pub name: String,
 }
 
